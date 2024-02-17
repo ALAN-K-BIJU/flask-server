@@ -1,39 +1,32 @@
-from flask import Flask, jsonify, request
-from flask_socketio import SocketIO, emit
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import random
-import time
-import threading
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
 
-cors = CORS(app, resources={r"/socket.io/*": {"origins": "*"}})
+cors = CORS(app, resources={r"/*": {"origins": "*"}})
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+@app.route('/upload', methods=['POST'])
+def upload_files():
+    lane_urls = {}
 
-def emit_updated_data():
-    while True:
-        colors = ["#FF0000", "#00FF00", "#00FF00", "#FF0000"] 
-        random.shuffle(colors)  
+    for key, file in request.files.items():
+        file.save(f"uploads/{file.filename}")
 
-        data = {
-            "light1": colors[0],
-            "light2": colors[1],
-            "light3": colors[2],
-            "light4": colors[3],
-        }
+    for key, value in request.form.items():
+        
+        if key.startswith('lane'):
+            lane_number = int(key[4:])
+            lane_urls[f"lane{lane_number}"] = value
 
-        socketio.emit("lights_update", data, namespace='/')
-        socketio.sleep(7)
+    response_data = [
+        {"traffic": "LOW", "value": 0.876},
+        {"traffic": "EMPTY", "value": 0.876},
+        {"traffic": "MEDIUM", "value": 0.876},
+        {"traffic": "JAM", "value": 0.876},
+        {"traffic": "HIGH", "value": 0.208}
+    ]
 
-@socketio.on('connect')
-def connected():
-    sid = request.sid
-    print(sid)
-    print("Client is connected.")
-
-    threading.Thread(target=emit_updated_data, daemon=True).start()
+    return jsonify(response_data)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
+    app.run(debug=True)
