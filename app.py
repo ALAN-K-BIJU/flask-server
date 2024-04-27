@@ -42,25 +42,34 @@ def process_pothole_image(image_path):
 
 @app.route('/api/lights', methods=['POST'])
 def upload_density_images():
-    if 'urls' not in request.json:
-        return jsonify({'error': 'No URLs provided'}), 400
+    try:
+        if 'images' not in request.json:
+            return jsonify({'error': 'No images provided'}), 400
 
-    urls = request.json['urls']
+        images = request.json['images']
 
-    results = []
-    for url in urls:
-        try:
-            img_data = urllib.request.urlopen(url).read()
-            img_filename = os.path.join(upload_dir, "cloudinary_img.jpg")
-            with open(img_filename, 'wb') as img_file:
-                img_file.write(img_data)
-            
-            label, probability = process_density_image(img_filename)
-            results.append({"url": url, "traffic": label, "value": probability})
-        except Exception as e:
-            results.append({"url": url, "error": str(e)})
-    
-    return jsonify(results), 200
+        if not isinstance(images, list):
+            return jsonify({'error': 'Images must be provided as a list'}), 400
+
+        if len(images) == 0:
+            return jsonify({'error': 'No images provided in the list'}), 400
+
+        results = []
+        for image in images:
+            try:
+                img_data = urllib.request.urlopen(image).read()
+                img_filename = os.path.join(upload_dir, "cloudinary_img.jpg")
+                with open(img_filename, 'wb') as img_file:
+                    img_file.write(img_data)
+                
+                label, probability = process_density_image(img_filename)
+                results.append({"image": image, "traffic": label, "value": probability})
+            except Exception as e:
+                results.append({"image": image, "error": str(e)})
+        print(jsonify(results))
+        return jsonify(results), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="localhost", port=5000, debug=True)
